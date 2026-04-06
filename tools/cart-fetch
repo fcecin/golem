@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Usage: cart-fetch <url>[@<ref>]
+# Clones or updates a cartridge repo into cartridges/<user>/<repo>/
+# Cartridges are global — shared across all workspaces.
+#
+# Examples:
+#   cart-fetch github.com/fcecin/carts          -> cartridges/fcecin/carts/
+#   cart-fetch github.com/fcecin/carts@v1.0     -> cartridges/fcecin/carts/ at v1.0
+#   cart-fetch https://github.com/fcecin/carts  -> cartridges/fcecin/carts/
+
+HARNESS_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+
+if [ $# -lt 1 ]; then
+  echo "Usage: cart-fetch <url>[@<ref>]" >&2
+  exit 1
+fi
+
+INPUT="$1"
+CARTRIDGES_DIR="$HARNESS_DIR/cartridges"
+
+# Split url@ref
+if [[ "$INPUT" == *@* ]]; then
+  URL="${INPUT%@*}"
+  REF="${INPUT##*@}"
+else
+  URL="$INPUT"
+  REF="main"
+fi
+
+# Strip protocol prefix if present
+CLEAN="${URL#https://}"
+CLEAN="${CLEAN#http://}"
+
+# Extract user/repo from the path (e.g. github.com/fcecin/carts -> fcecin/carts)
+# Remove the host part
+WITHOUT_HOST="${CLEAN#*/}"
+
+# user is the first component, repo is the second
+USER=$(echo "$WITHOUT_HOST" | cut -d'/' -f1)
+REPO=$(echo "$WITHOUT_HOST" | cut -d'/' -f2 | sed 's/\.git$//')
+
+if [ -z "$USER" ] || [ -z "$REPO" ]; then
+  echo "ERROR: Cannot parse user/repo from URL: $URL" >&2
+  exit 1
+fi
+
+DEST="$CARTRIDGES_DIR/$USER/$REPO"
+
+# Ensure the URL is a full git-cloneable URL
+GIT_URL="https://$CLEAN"
+
+mkdir -p "$(dirname "$DEST")"
+
+if [ -d "$DEST/.git" ]; then
+  echo "Updating $USER/$REPO (ref: $REF)..."
+  git -C "$DEST" fetch --quiet origin
+  git -C "$DEST" checkout --quiet "$REF" 2>/dev/null \
+    || git -C "$DEST" checkout --quiet "origin/$REF"
+  echo "Updated $USER/$REPO -> $(git -C "$DEST" rev-parse --short HEAD)"
+else
+  echo "Cloning $USER/$REPO (ref: $REF)..."
+  git clone --quiet "$GIT_URL" "$DEST"
+  git -C "$DEST" checkout --quiet "$REF" 2>/dev/null \
+    || git -C "$DEST" checkout --quiet "origin/$REF"
+  echo "Cloned $USER/$REPO -> $(git -C "$DEST" rev-parse --short HEAD)"
+fi
+
+# Check if it's a monorepo (has cart-* subdirs) or a single cart
+if ls "$DEST"/cart-*/manifest.md &>/dev/null; then
+  echo "Monorepo detected. Available carts:"
+  for d in "$DEST"/cart-*/; do
+    [ -f "$d/manifest.md" ] && echo "  $(basename "$d")"
+  done
+elif [ -f "$DEST/manifest.md" ]; then
+  echo "Single cart: $USER/$REPO"
+else
+  echo "WARNING: No manifest.md found — not a valid cartridge" >&2
+fi
