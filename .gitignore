@@ -1,4 +1,16 @@
 # Cartridges are fetched at runtime, not part of harness source
 cartridges/*
 !cartridges/.gitkeep
+
+# Cache is runtime data owned by carts
+cache/*
+!cache/.gitkeep
+
+# Laboratory — LLMs write here when they want to
+laboratory/*
+!laboratory/README.md
+
+# Local scratch space
+local/
+
 TODO.md

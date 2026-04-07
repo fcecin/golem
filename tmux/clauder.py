@@ -73,17 +73,9 @@ def wait_for_prompt(session: str, timeout: float = 60.0) -> bool:
 
 
 def is_prompt_ready(content: str) -> bool:
-    lines = content.strip().split('\n')
-    for line in reversed(lines[-10:]):
-        line = line.strip()
-        if not line:
-            continue
-        if '❯' in line:
-            return True
-        if 'bypass permissions' in line:
-            return True
-        break
-    return False
+    # Look for the ❯ prompt character anywhere in the content
+    # It appears on the input line when Claude is ready for input
+    return '❯' in content
 
 
 def wait_for_idle(session: str, idle_seconds: float = 30.0) -> str:
@@ -154,8 +146,9 @@ def main():
         subprocess.run(["tmux", "kill-session", "-t", session])
         sys.exit(1)
 
-    # Send initial prompt
+    # Send initial prompt — small delay to ensure prompt is fully ready
     print("[clauder] Prompt detected. Sending...")
+    time.sleep(1)
     tmux_send(session, args.prompt)
 
     # Main loop: wait for idle, check for done, nudge to continue

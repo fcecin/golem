@@ -31,6 +31,9 @@ case "\$cmd" in
     # Print the boot phrase
     exec "\$GOLEM_DIR/boot.sh"
     ;;
+  dir)
+    echo "\$GOLEM_DIR"
+    ;;
   init)
     # Create a work directory with a starter task.md
     dir="\${1:?Usage: golem init <dir>}"
@@ -93,7 +96,8 @@ TASK
     (cd "\$dir" && bash "\$CART_DIR/tools/golem-cart-init.sh" "\$CART_DIR" "\$@")
     ;;
   cart-list)
-    # List all installed cartridges with cart-init status
+    # List installed cartridges, optionally filtered by substring
+    filter="\${1:-}"
     if [ ! -d "\$GOLEM_DIR/cartridges" ]; then
       echo "No cartridges installed."
       exit 0
@@ -103,6 +107,9 @@ TASK
       cart_dir=\$(dirname "\$manifest")
       cart_name=\$(basename "\$cart_dir")
       rel_path=\$(realpath --relative-to="\$GOLEM_DIR/cartridges" "\$cart_dir")
+      if [ -n "\$filter" ] && [[ "\$rel_path" != *"\$filter"* ]]; then
+        continue
+      fi
       echo "\$rel_path"
       if [ -f "\$cart_dir/tools/golem-cart-init.sh" ]; then
         desc=\$(sed -n '2s/^# *//p' "\$cart_dir/tools/golem-cart-init.sh")
@@ -112,6 +119,9 @@ TASK
       fi
     done < <(find "\$GOLEM_DIR/cartridges" -name "manifest.md" -not -path "*/.git/*" | sort)
     ;;
+  clauder)
+    exec "\$GOLEM_DIR/tmux/golem-clauder.sh" "\$@"
+    ;;
   help|*)
     echo "golem — context scheduler for LLMs"
     echo ""
@@ -120,10 +130,12 @@ TASK
     echo "Commands:"
     echo "  init <dir>            Create a work directory (use . for current dir)"
     echo "  fetch <url>           Clone a cart repo (fetches entire repo, including monorepos)"
-    echo "  cart-list             List installed cartridges and cart-init availability"
+    echo "  cart-list [filter]    List installed cartridges (optional substring filter)"
     echo "  cart-init <cart> <dir> Run a cartridge's init in a work directory"
     echo "  run [args]            Launch claude in the current work directory"
     echo "  boot                  Print the bootstrap phrase"
+    echo "  dir                   Print the golem installation directory"
+    echo "  clauder [opts]        Drive claude via tmux (auto-continue loop)"
     echo ""
     echo "Cart matching examples:"
     echo "  golem cart-init styler ~/work        # matches 'cart-logos-delivery-styler'"
@@ -132,6 +144,9 @@ TASK
     echo ""
     echo "To run unattended (no permission prompts, THIS IS DANGEROUS):"
     echo "  golem run --dangerously-skip-permissions"
+    echo ""
+    echo "Clauder options (golem clauder --help for full list):"
+    echo "  golem clauder --dir ~/work --idle 15 --claude-args=\"--dangerously-skip-permissions\""
     echo ""
     echo "Golem dir: \$GOLEM_DIR"
     ;;
