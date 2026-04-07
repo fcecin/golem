@@ -98,17 +98,38 @@ TASK
     echo "Running cart-init for \$(basename "\$CART_DIR") in \$dir..."
     (cd "\$dir" && bash "\$CART_DIR/tools/golem-cart-init.sh" "\$CART_DIR" "\$@")
     ;;
+  cart-list)
+    # List all installed cartridges with cart-init status
+    if [ ! -d "\$GOLEM_DIR/cartridges" ]; then
+      echo "No cartridges installed."
+      exit 0
+    fi
+    found=0
+    while IFS= read -r manifest; do
+      cart_dir=\$(dirname "\$manifest")
+      cart_name=\$(basename "\$cart_dir")
+      rel_path=\$(realpath --relative-to="\$GOLEM_DIR/cartridges" "\$cart_dir")
+      echo "\$rel_path"
+      if [ -f "\$cart_dir/tools/golem-cart-init.sh" ]; then
+        desc=\$(sed -n '2s/^# *//p' "\$cart_dir/tools/golem-cart-init.sh")
+        echo "  cart-init: \${desc:-available (no description)}"
+      else
+        echo "  cart-init: not available"
+      fi
+    done < <(find "\$GOLEM_DIR/cartridges" -name "manifest.md" -not -path "*/.git/*" | sort)
+    ;;
   help|*)
     echo "golem — context scheduler for LLMs"
     echo ""
     echo "Usage: golem <command> [args...]"
     echo ""
     echo "Commands:"
-    echo "  init <dir>         Create a work directory (use . for current dir)"
-    echo "  fetch <url>        Clone a cart repo (fetches entire repo, including monorepos)"
-    echo "  cart-init <cart> <dir>  Run a cartridge's init in a work directory"
-    echo "  run [args]         Launch claude in the current work directory"
-    echo "  boot               Print the bootstrap phrase"
+    echo "  init <dir>            Create a work directory (use . for current dir)"
+    echo "  fetch <url>           Clone a cart repo (fetches entire repo, including monorepos)"
+    echo "  cart-list             List installed cartridges and cart-init availability"
+    echo "  cart-init <cart> <dir> Run a cartridge's init in a work directory"
+    echo "  run [args]            Launch claude in the current work directory"
+    echo "  boot                  Print the bootstrap phrase"
     echo ""
     echo "Cart matching examples:"
     echo "  golem cart-init styler ~/work        # matches 'cart-logos-delivery-styler'"
