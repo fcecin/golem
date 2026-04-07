@@ -203,6 +203,10 @@ Available tools:
 - `tools/cart-fetch <url>[@<ref>]` — clone or update a cartridge repo into
   the work directory's `cartridges/<name>/`. Extracts the repo name from the
   URL. If already cloned, pulls the specified ref. If no ref, uses `main`.
+- `tools/append <file> <text>` — append text to a file without reading it.
+  For multiline, use `append <file> - <<'EOF'`. Use this for log.md,
+  report.md, and any append-only file. Do NOT read a file just to append
+  to it — use this tool instead.
 
 Tools are deliberately simple. Each one does one thing. The model calls them
 via shell execution. If a tool does not exist for an operation, the model uses

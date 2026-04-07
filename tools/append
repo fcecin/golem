@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# append — append text to a file without reading it
+#
+# Usage:
+#   append <file> <text>       Append a single line
+#   append <file> - <<'EOF'    Append multiline text from stdin
+#     line 1
+#     line 2
+#   EOF
+#
+# Creates the file if it doesn't exist.
+# Use this instead of reading a file just to append to it.
+
+file="${1:?Usage: append <file> <text>}"
+shift
+
+if [ "${1:-}" = "-" ]; then
+  cat >> "$file"
+else
+  echo "$*" >> "$file"
+fi
