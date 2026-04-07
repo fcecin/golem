@@ -322,6 +322,14 @@ and why you went off-script. Every entry here is a model discipline failure
 that helps cart developers write tighter instructions — or better
 ones, if you turned out to be right.
 
+Cheating is not good, but it is forgivable when documented. Cheating and
+LYING ABOUT IT — by not writing to cheats.md, by pretending a deviation is
+not a deviation, by batching operations in a shell loop while the manifest
+says to process one at a time — is a complete and unjustified failure. The
+entire value of cheats.md is that it captures what actually happened. If you
+cheat and don't document it, the workspace output is untrustworthy and the
+run is worthless. Document every deviation, no matter how small.
+
 ### `task.md`
 
 The user's file. Describes what the user wants done in this instance. The model
