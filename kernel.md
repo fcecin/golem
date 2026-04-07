@@ -80,7 +80,7 @@ workdir/
   learnings.md           # accumulated feedback (append-only, persistent)
   material/              # reference data (readonly during run)
   workspace/             # scratch area (model-owned)
-  runs/                  # logs and state from previous runs
+    runs/                # session reports from each golem run
 ```
 
 The work directory is an instance — one project, one task, one history of
@@ -249,13 +249,11 @@ copied out).
 
 ### `runs/`
 
-Contains logs and state from previous runs. Each run gets a timestamped
-subdirectory. The model writes here; the user reads here.
+Contains session reports from previous runs. Each `golem run` writes its
+session report here as `golem-session-report-N.md` (numbered sequentially).
+This keeps the workspace root clean while preserving the full audit trail.
 
-Contents of a run directory:
-- `log.txt` — full session transcript.
-- `state.json` — checkpoint state (which items were processed, pass/fail).
-- `output/` — any files the model produced.
+Create the directory if it does not exist: `mkdir -p workspace/runs`
 
 ### `log.md`
 
@@ -381,12 +379,16 @@ below) explaining what happened, then exit.
 
 When you are about to stop — whether the task is complete, you hit a wall,
 a cartridge issues a FATAL ERROR, or the session is ending for any reason —
-write a session report to workspace.
+write a session report to `workspace/runs/`.
+
+Create the directory if needed: `mkdir -p workspace/runs`
 
 To find the filename: look for existing `golem-session-report-*.md` files in
-workspace/. If none exist, write `golem-session-report-1.md`. If
+`workspace/runs/`. If none exist, write `golem-session-report-1.md`. If
 `golem-session-report-1.md` exists, write `-2.md`, and so on. Always use
-this exact pattern. Do not write `golem-session-report.md` (without a number). Walk through everything from the moment you absorbed
+this exact pattern. Do not write `golem-session-report.md` (without a number).
+
+Walk through everything from the moment you absorbed
 kernel.md to the point you're stopping. Include:
 
 - What state you found (fresh start or resuming, what existed already)
@@ -422,8 +424,8 @@ golem solves this by periodic context refresh. The program stack is:
 This stack is the model's program. It must be re-read periodically to keep
 the model anchored. The model MUST re-read the full stack:
 
-- Before the first iteration of any loop.
-- Every N iterations (default: 20, configurable in task.md).
+- Before starting work for the first time.
+- When a cartridge tool prints a REFRESH directive.
 - After any error that required recovery.
 - When the model notices itself unsure about the rules.
 
@@ -441,4 +443,4 @@ refreshes by printing a `REFRESH` directive in their output.
 - The model never modifies `material/` in the work directory.
 - The model never modifies `task.md`.
 - The model may only append to `learnings.md`.
-- All mutable state lives in `workspace/` and `runs/`.
+- All mutable state lives in `workspace/`.

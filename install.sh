@@ -56,17 +56,11 @@ TASK
     dir="\${2:?Usage: golem cart-init <cart-pattern> <dir>}"
     shift 2
 
-    # Search for matching carts
-    if [ -d "\$pattern" ]; then
-      # Absolute or relative path given directly
-      matches=("\$pattern")
-    else
-      # Search cartridges/ for dirs matching the pattern
-      matches=()
-      while IFS= read -r d; do
-        [ -f "\$d/manifest.md" ] && matches+=("\$d")
-      done < <(find "\$GOLEM_DIR/cartridges" -type d -name "*\$pattern*" 2>/dev/null | sort)
-    fi
+    # Search cartridges only
+    matches=()
+    while IFS= read -r d; do
+      [ -f "\$d/manifest.md" ] && matches+=("\$d")
+    done < <(find "\$GOLEM_DIR/cartridges" -type d -name "*\$pattern*" 2>/dev/null | sort)
 
     if [ \${#matches[@]} -eq 0 ]; then
       echo "ERROR: No cart matching '\$pattern' found in \$GOLEM_DIR/cartridges/" >&2
