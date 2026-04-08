@@ -6,7 +6,9 @@ A context scheduler for LLMs. `golem` drives a model through complex tasks by co
 
 ## WARNING
 
-(HUMAN NOTE:) I guess it's better to make this explicit, even if it's obvious. The only way to make this safe is to run this on its own dedicated computer. There's no way to add "security" to a bot on your personal machine where you have all your stuff. Even if you design correct security procedures, you'll just breach them yourself when you're having all that fun. If you want security run bots in dedicated boxes and don't give them any credentials you don't want leaked. That's it. 
+(HUMAN NOTE:) I guess it's better to make this explicit, even if it's obvious. The only way to make this safe is to run this on its own dedicated computer. There's no way to add "security" to a bot on your personal machine where you have all your stuff. Even if you design correct security procedures, you'll just breach them yourself when you're having all that fun. If you want security run bots in dedicated boxes and don't give them any credentials you don't want leaked. That's it.
+
+PROTIP: [Hetzner](https://hetzner.com) has an AMD server with 64 GB RAM for $45.20 + VAT per month. It's impossible to setup if you don't know how, but Claude knows how to do it (make sure you have an SSH key in ~/.ssh etc. that you can use). Just get a cheap Hetzner box and toss your agent stuff there; problem solved.
 
 ## What it does
 
