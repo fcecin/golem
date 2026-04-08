@@ -4,6 +4,10 @@ __NOTE: This is experimental software.__
 
 A context scheduler for LLMs. `golem` drives a model through complex tasks by controlling what content enters the context window and when.
 
+## WARNING
+
+(HUMAN NOTE:) I guess it's better to make this explicit, even if it's obvious. The only way to make this safe is to run this on its own dedicated computer. There's no way to add "security" to a bot on your personal machine where you have all your stuff. Even if you design correct security procedures, you'll just breach them yourself when you're having all that fun. If you want security run bots in dedicated boxes and don't give them any credentials you don't want leaked. That's it. 
+
 ## What it does
 
 `golem` is a harness. You install it once, then create work directories for specific tasks. Capabilities are loaded via cartridges — git repos containing natural language instructions, tools, and reference material that shape the model's behavior.
