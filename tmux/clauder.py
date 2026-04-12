@@ -17,6 +17,21 @@ import os
 import shutil
 import hashlib
 import argparse
+import datetime
+
+
+_log_path = None
+
+
+def log(msg: str):
+    if _log_path is None:
+        return
+    try:
+        ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with open(_log_path, "a") as f:
+            f.write(f"{ts} [clauder] {msg}\n")
+    except OSError:
+        pass
 
 
 CONTINUE_PROMPT = (
@@ -36,7 +51,7 @@ def check_dependencies():
         if not shutil.which(tool):
             missing.append(tool)
     if missing:
-        print(f"[clauder] ERROR: Missing required tools: {', '.join(missing)}")
+        sys.stderr.write(f"[clauder] ERROR: Missing required tools: {', '.join(missing)}\n")
         sys.exit(1)
 
 
@@ -140,6 +155,9 @@ def main():
     parser.add_argument("--idle", type=float, default=30.0, help="Idle detection seconds (default: %(default)s)")
     parser.add_argument("--detach", action="store_true", help="Run detached (no visible terminal)")
     parser.add_argument("--claude-args", default="", help="Extra args to pass to claude")
+    parser.add_argument("--no-nudge", action="store_true",
+                        help="Don't send the work-item nudge on idle. Keeps the 429 "
+                             "rate-limit watcher running for interactive human use.")
     args = parser.parse_args()
 
     check_dependencies()
@@ -147,10 +165,13 @@ def main():
     session = args.session
     workdir = os.path.realpath(args.dir)
 
-    print(f"[clauder] Work dir: {workdir}")
-    print(f"[clauder] Session: {session}")
-    print(f"[clauder] Idle timeout: {args.idle}s")
-    print(f"[clauder] Prompt: {args.prompt[:80]}...")
+    global _log_path
+    _log_path = os.path.join(workdir, "clauder.log")
+
+    log(f"Work dir: {workdir}")
+    log(f"Session: {session}")
+    log(f"Idle timeout: {args.idle}s")
+    log(f"Prompt: {args.prompt[:80]}")
 
     # Launch claude in tmux
     subprocess.run([
@@ -164,51 +185,55 @@ def main():
             os.execlp("tmux", "tmux", "attach", "-t", session)
 
     # Wait for claude to be ready
-    print("[clauder] Waiting for Claude prompt...")
+    log("Waiting for Claude prompt...")
     if not wait_for_prompt(session):
-        print("[clauder] ERROR: Claude prompt not detected. Timeout.")
+        log("ERROR: Claude prompt not detected. Timeout.")
         subprocess.run(["tmux", "kill-session", "-t", session])
         sys.exit(1)
 
     # Send initial prompt — small delay to ensure prompt is fully ready
     if args.prompt:
-        print("[clauder] Prompt detected. Sending...")
+        log("Prompt detected. Sending initial prompt.")
         time.sleep(1)
         tmux_send(session, args.prompt)
     else:
-        print("[clauder] Prompt detected. No initial prompt to send.")
+        log("Prompt detected. No initial prompt to send.")
 
     # Main loop: wait for idle, check for done, nudge to continue
     iteration = 0
     while True:
         iteration += 1
-        print(f"[clauder] Waiting for idle (iteration {iteration})...")
+        log(f"Waiting for idle (iteration {iteration})...")
 
         content = wait_for_idle(session, args.idle)
 
         if not content:
-            print("[clauder] Session died. Exiting.")
+            log("Session died. Exiting.")
             break
 
         if has_done_signal(content):
-            print(f"[clauder] Done signal detected after {iteration} iterations.")
+            log(f"Done signal detected after {iteration} iterations.")
             break
 
         if rate_limit_near_prompt(content):
-            print(f"[clauder] Rate limit (429) detected at prompt. Sending 'continue' to retry...")
+            log("Rate limit (429) detected at prompt. Sending 'continue' to retry.")
             tmux_send(session, "continue")
             continue
 
-        print(f"[clauder] Idle detected. Sending continue prompt...")
+        if args.no_nudge:
+            # Interactive mode: just keep watching, never perturb the session.
+            continue
+
+        log("Idle detected. Sending continue prompt.")
         tmux_send(session, CONTINUE_PROMPT)
 
     # Cleanup
     if tmux_session_alive(session):
         final = tmux_capture(session)
-        print(f"[clauder] Final pane ({len(final)} chars)")
+        log(f"Final pane ({len(final)} chars)")
         subprocess.run(["tmux", "kill-session", "-t", session])
 
-    print(f"[clauder] Finished. Total iterations: {iteration}")
+    log(f"Finished. Total iterations: {iteration}")
 
 
 if __name__ == "__main__":
