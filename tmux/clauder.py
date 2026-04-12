@@ -27,6 +27,8 @@ CONTINUE_PROMPT = (
 
 DONE_SIGNAL = "NO MORE WORK TO DO"
 
+RATE_LIMIT_SIGNAL = "Request rejected (429)"
+
 
 def check_dependencies():
     missing = []
@@ -105,6 +107,28 @@ def has_done_signal(content: str) -> bool:
     return DONE_SIGNAL in content
 
 
+def has_rate_limit(content: str) -> bool:
+    return RATE_LIMIT_SIGNAL in content
+
+
+def rate_limit_near_prompt(content: str, max_lines_above: int = 10) -> bool:
+    """True only if the 429 message sits within max_lines_above lines of the ❯ prompt.
+
+    Prevents firing on stale rate-limit text that's still visible but has been
+    superseded by newer Claude output.
+    """
+    lines = content.splitlines()
+    prompt_idx = None
+    for i, line in enumerate(lines):
+        if '❯' in line:
+            prompt_idx = i
+            break
+    if prompt_idx is None:
+        return False
+    start = max(0, prompt_idx - max_lines_above)
+    return any(RATE_LIMIT_SIGNAL in l for l in lines[start:prompt_idx])
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Launches claude in a tmux session, sends an initial prompt, "
@@ -147,9 +171,12 @@ def main():
         sys.exit(1)
 
     # Send initial prompt — small delay to ensure prompt is fully ready
-    print("[clauder] Prompt detected. Sending...")
-    time.sleep(1)
-    tmux_send(session, args.prompt)
+    if args.prompt:
+        print("[clauder] Prompt detected. Sending...")
+        time.sleep(1)
+        tmux_send(session, args.prompt)
+    else:
+        print("[clauder] Prompt detected. No initial prompt to send.")
 
     # Main loop: wait for idle, check for done, nudge to continue
     iteration = 0
@@ -166,6 +193,11 @@ def main():
         if has_done_signal(content):
             print(f"[clauder] Done signal detected after {iteration} iterations.")
             break
+
+        if rate_limit_near_prompt(content):
+            print(f"[clauder] Rate limit (429) detected at prompt. Sending 'continue' to retry...")
+            tmux_send(session, "continue")
+            continue
 
         print(f"[clauder] Idle detected. Sending continue prompt...")
         tmux_send(session, CONTINUE_PROMPT)
